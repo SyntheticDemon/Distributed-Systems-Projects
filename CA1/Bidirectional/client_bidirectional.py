@@ -25,10 +25,10 @@ class BidirectionalClient(object):
             pb2.ClientItemList(clientItems=[pb2.Item(name='Item2')])
         ]
         for item in items:
-            return item
+            yield item
 
 
-    def get_url(self):
+    def get_order(self):
             responses = self.stub.GetOrder(self.generate_messages())
             for response in responses:
                 print(f'{response}')
@@ -37,4 +37,4 @@ class BidirectionalClient(object):
 if __name__ == '__main__':
     client = BidirectionalClient()
     
-    client.get_url()
+    client.get_order()

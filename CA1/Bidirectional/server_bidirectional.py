@@ -42,15 +42,18 @@ from datetime import datetime
 import bidirectional_pb2_grpc as pb2_grpc
 import bidirectional_pb2 as pb2
 import sys
-sys.path.append(r"D:\UT\Lessons\Term8\Distributed Systems\Projects")
+import os
+
+# sys.path.append(r"D:\UT\Lessons\Term8\Distributed Systems\Projects")
+sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 from CA1 import utils
 
 class BidirectionalService(pb2_grpc.BidirectionalServicer):
     def GetOrder(self, request_iterator, context):
         available_orders = utils.read_orders_from_file("../orders.txt")
-        response = []
         for request in request_iterator:
+            response = []
             for item in request.clientItems:
                 if item.name in available_orders:
                     response.append(pb2.Item(name=item.name))
@@ -59,7 +62,10 @@ class BidirectionalService(pb2_grpc.BidirectionalServicer):
                     prefixedOrders = utils.find_orders_with_prefix(str(item.name), available_orders)
                     for prefixedOrder in prefixedOrders:
                         response.append(pb2.Item(name=prefixedOrder))
+            print(f"Response: {response}")
             yield pb2.ServerItemList(serverItems=response, timestamp=str(datetime.today()))
+            
+    
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
