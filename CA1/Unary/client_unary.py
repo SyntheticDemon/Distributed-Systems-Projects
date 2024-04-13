@@ -4,10 +4,6 @@ import unary_pb2 as pb2
 
 
 class UnaryClient(object):
-    """
-    Client for gRPC functionality
-    """
-
     def __init__(self):
         self.host = 'localhost'
         self.server_port = 8081
@@ -19,12 +15,8 @@ class UnaryClient(object):
         # bind the client and the server
         self.stub = pb2_grpc.UnaryStub(self.channel)
 
-    def get_url(self, message):
-        """
-        Client function to call the rpc for GetServerResponse
-        """
+    def get_orders(self, message):
         message = pb2.ClientItemList(clientItems=message)
-        # print(f'{message}')
         return self.stub.GetOrder(message)
 
 
@@ -35,5 +27,5 @@ if __name__ == '__main__':
             pb2.Item(name='Rice')
             # pb2.Item(name='Item3')
         ]
-    result = client.get_url(items)
+    result = client.get_orders(items)
     print(f'{result}')
