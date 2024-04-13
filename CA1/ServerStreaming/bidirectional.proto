@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package shoppingService;
+
+service ServerStreaming {
+  rpc GetOrder(ClientItemList) returns (stream ServerItemList) {}
+}
+
+message Item {
+  string name = 1;
+}
+
+message ClientItemList {
+  repeated Item clientItems = 1;
+}
+
+message ServerItemList {
+  repeated Item serverItems = 1;
+  string timestamp = 2;
+}
