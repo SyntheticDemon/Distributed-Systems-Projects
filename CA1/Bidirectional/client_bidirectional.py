@@ -27,10 +27,10 @@ class BidirectionalClient(object):
         for item in items:
             yield item
 
-
     def get_order(self):
             responses = self.stub.GetOrder(self.generate_messages())
             for response in responses:
+                print("Async Responses")
                 print(f'{response}')
             
 

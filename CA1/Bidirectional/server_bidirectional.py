@@ -12,16 +12,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 from CA1 import utils
 
 class BidirectionalService(pb2_grpc.BidirectionalServicer):
+    def __init__(self):
+        self.available_orders = utils.read_orders_from_file("../orders.txt")
+
     def GetOrder(self, request_iterator, context):
-        available_orders = utils.read_orders_from_file("../orders.txt")
         for request in request_iterator:
             response = []
             for item in request.clientItems:
-                if item.name in available_orders:
+                if item.name in self.available_orders:
                     response.append(pb2.Item(name=item.name))
                 else:
-                    # Handle prefixed orders
-                    prefixedOrders = utils.find_orders_with_prefix(str(item.name), available_orders)
+                    prefixedOrders = utils.find_orders_with_prefix(str(item.name), self.available_orders)
                     for prefixedOrder in prefixedOrders:
                         response.append(pb2.Item(name=prefixedOrder))
             print(f"Response: {response}")
