@@ -1,1 +1,7 @@
 *pb2*.py
+**/__pycache__*/
+*.pdf
+.gitignore
+*.txt
+
+
