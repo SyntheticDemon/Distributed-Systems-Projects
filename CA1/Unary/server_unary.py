@@ -28,7 +28,7 @@ class UnaryService(pb2_grpc.UnaryServicer):
                 prefixedOrders = utils.find_orders_with_prefix(str(item.name), available_orders)
                 for prefixedOrder in prefixedOrders:
                     response.append(pb2.Item(name=prefixedOrder))
-        
+        print(response)
         return pb2.ServerItemList(serverItems=response, timestamp= str(datetime.today()))
 
 
