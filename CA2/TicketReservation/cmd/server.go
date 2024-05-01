@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"TicketReservation/internal"
@@ -9,12 +9,13 @@ import (
 )
 
 func main() {
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":8998")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
 	Distrubted_Systems_git.RegisterTicketServiceServer(s, &internal.TicketService{})
+	log.Print("Starting gRPC Server ...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
