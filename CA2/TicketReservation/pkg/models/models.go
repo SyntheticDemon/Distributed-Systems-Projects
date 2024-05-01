@@ -6,8 +6,8 @@ type Event struct {
 	ID               string
 	Name             string
 	Date             time.Time
-	TotalTickets     int
-	AvailableTickets int
+	TotalTickets     int32
+	AvailableTickets int32
 }
 
 type Ticket struct {

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package ticket;
+
+option go_package = "github.com/SyntheticDemon/Distrubted-Systems/ticket";
+
+service TicketService {
+  rpc BookTickets (BookRequest) returns (BookResponse) {}
+  rpc CreateEvent (CreateEventRequest) returns (EventResponse) {}
+  rpc ListEvents (ListEventsRequest) returns (ListEventsResponse) {}
+}
+
+message BookRequest {
+  string event_id = 1;
+  int32 num_tickets = 2;
+}
+
+message BookResponse {
+  repeated string ticket_ids = 1;
+  string error = 2;
+}
+
+message CreateEventRequest {
+  string name = 1;
+  int64 date = 2;
+  int32 total_tickets = 3;
+}
+
+message EventResponse {
+  string id = 1;
+  string name = 2;
+  int64 date = 3;
+  int32 total_tickets = 4;
+  int32 available_tickets = 5;
+}
+
+message ListEventsRequest {}
+
+message ListEventsResponse {
+  repeated Event event_details = 1;
+  string error = 2;
+}
+
+message Event {
+  string id = 1;
+  string name = 2;
+  int64 date = 3;
+  int32 total_tickets = 4;
+  int32 available_tickets = 5;
+}
