@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package shoppingService;
+
+message ClientMessage {
+  string itemName = 1;
+}
+
+message ServerMessage {
+  string itemName = 1;
+  string timestamp = 2;
+}
+
+service Bidirectional{
+  rpc ChatOrder(stream ClientMessage) returns (stream ServerMessage) {}
+}
+
+
+
+
+
