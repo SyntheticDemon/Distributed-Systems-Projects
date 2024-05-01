@@ -1,111 +1,122 @@
 package main
 
 import (
-	ticket "TicketReservation/proto" // import the generated gRPC client package
+	proto "TicketReservation/proto"
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
-	"log"
-	"sync"
+	"os"
+	"strconv"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
-	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:8998", grpc.WithInsecure(), grpc.WithBlock())
+	if len(os.Args) < 2 {
+		fmt.Println("usage: <command> [arguments]")
+		return
+	}
+	command := os.Args[1]
+
+	conn, err := grpc.Dial("localhost:8998", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Could not connect: %v", err)
+		fmt.Printf("failed to connect to server: %v\n", err)
+		return
 	}
 	defer conn.Close()
 
-	client := ticket.NewTicketServiceClient(conn)
+	client := proto.NewTicketServiceClient(conn)
+	ctx := context.Background()
 
-	// Call CreateEvent
-	eventId := createEvent(client)
-
-	//// Call ListEvents
-	listEvents(client)
-	//
-	//// Call BookTickets
-	bookTickets(client, eventId, 2)
-
-	//var wg sync.WaitGroup
-	//
-	//for i := 0; i < 5; i++ {
-	//	wg.Add(1)
-	//	go func(i int) {
-	//		defer wg.Done()
-	//		// Call BookTickets concurrently for different clients
-	//		bookTickets(client, eventId, 4)
-	//	}(i)
-	//}
-	//wg.Wait()
-
-	runFlood(client, eventId, 10)
-}
-
-func createEvent(client ticket.TicketServiceClient) string {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := client.CreateEvent(ctx, &ticket.CreateEventRequest{
-		Name:         "Concert",
-		Date:         time.Now().Unix(),
-		TotalTickets: 100,
-	})
-	if err != nil {
-		log.Fatalf("Could not create event: %v", err)
+	switch command {
+	case "create":
+		createEvent(ctx, client, os.Args[2:])
+	case "book":
+		bookTickets(ctx, client, os.Args[2:])
+	case "list":
+		listEvents(ctx, client)
+	case "stress":
+		stressTest(ctx, client, os.Args[2:])
+	default:
+		fmt.Println("Unknown command")
 	}
-	fmt.Printf("Created Event: %v\n", r)
-	return r.Id
 }
 
-func listEvents(client ticket.TicketServiceClient) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := client.ListEvents(ctx, &ticket.ListEventsRequest{})
-	if err != nil {
-		log.Fatalf("Could not list events: %v", err)
+func createEvent(ctx context.Context, client proto.TicketServiceClient, args []string) {
+	if len(args) != 3 {
+		fmt.Println("usage: create <name> <date> <totalTickets>")
+		return
 	}
-	fmt.Printf("List of Events: %v\n", r)
+	name := args[0]
+	date, _ := strconv.ParseInt(args[1], 10, 64)
+	totalTickets, _ := strconv.Atoi(args[2])
+	req := &proto.CreateEventRequest{
+		Name:         name,
+		Date:         date,
+		TotalTickets: int32(totalTickets),
+	}
+	resp, err := client.CreateEvent(ctx, req)
+	if err != nil {
+		fmt.Printf("Error creating event: %v\n", err)
+		return
+	}
+	fmt.Printf("Event created: ID %s, Name %s\n", resp.Id, resp.Name)
 }
 
-func bookTickets(client ticket.TicketServiceClient, eventID string, numTickets int) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	r, err := client.BookTickets(ctx, &ticket.BookRequest{
-		EventId:    eventID,
+func bookTickets(ctx context.Context, client proto.TicketServiceClient, args []string) {
+	if len(args) != 2 {
+		fmt.Println("usage: book <eventId> <numTickets>")
+		return
+	}
+	eventId := args[0]
+	numTickets, _ := strconv.Atoi(args[1])
+	req := &proto.BookRequest{
+		EventId:    eventId,
 		NumTickets: int32(numTickets),
-	})
-	if err != nil {
-		log.Fatalf("Could not book tickets: %v", err)
 	}
-	fmt.Printf("Booked Tickets: %v\n", r)
+	resp, err := client.BookTickets(ctx, req)
+	if err != nil {
+		fmt.Printf("Error booking tickets: %v\n", err)
+		return
+	}
+	fmt.Printf("Tickets booked: %v\n", resp.TicketIds)
 }
 
-func runFlood(client ticket.TicketServiceClient, eventID string, numRequests int) {
-	var wg sync.WaitGroup
-
-	for i := 0; i < numRequests; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-
-			_, err := client.BookTickets(ctx, &ticket.BookRequest{
-				EventId:    eventID,
-				NumTickets: 2, // Adjust based on your app logic
-			})
-			if err != nil {
-				log.Printf("Request %d failed: %v", i, err)
-			} else {
-				log.Printf("Request %d succeeded", i)
-			}
-		}(i)
+func listEvents(ctx context.Context, client proto.TicketServiceClient) {
+	resp, err := client.ListEvents(ctx, &proto.ListEventsRequest{})
+	if err != nil {
+		fmt.Printf("Error listing events: %v\n", err)
+		return
 	}
+	for _, event := range resp.EventDetails {
+		fmt.Printf("Event ID: %s, Name: %s, Date: %d, TotalTickets: %d, AvailableTickets: %d\n",
+			event.Id, event.Name, event.Date, event.TotalTickets, event.AvailableTickets)
+	}
+}
 
-	wg.Wait()
+func stressTest(ctx context.Context, client proto.TicketServiceClient, args []string) {
+	if len(args) != 4 {
+		fmt.Println("usage: stress <eventId> <numTickets> <count> <interval>")
+		return
+	}
+	eventId := args[0]
+	numTickets, _ := strconv.Atoi(args[1])
+	count, _ := strconv.Atoi(args[2])
+	interval, _ := strconv.ParseInt(args[3], 10, 64)
+
+	req := &proto.BookRequest{
+		EventId:    eventId,
+		NumTickets: int32(numTickets),
+	}
+	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	defer ticker.Stop()
+	for i := 0; i < count; i++ {
+		<-ticker.C
+		_, err := client.BookTickets(ctx, req)
+		if err != nil {
+			fmt.Printf("Error at request %d: %v\n", i+1, err)
+		} else {
+			fmt.Printf("Request %d successful\n", i+1)
+		}
+	}
 }
