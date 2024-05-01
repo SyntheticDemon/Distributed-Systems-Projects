@@ -14,7 +14,8 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	Distrubted_Systems_git.RegisterTicketServiceServer(s, &internal.TicketService{})
+	ticketService := internal.NewTicketService()
+	Distrubted_Systems_git.RegisterTicketServiceServer(s, ticketService)
 	log.Print("Starting gRPC Server ...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)

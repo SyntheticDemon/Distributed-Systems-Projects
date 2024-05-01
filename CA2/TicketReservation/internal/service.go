@@ -5,20 +5,73 @@ import (
 	Distrubted_Systems_git "TicketReservation/proto"
 	"context"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"sync"
 	"time"
 )
 
+type LeakyBucket struct {
+	capacity  int
+	remaining int
+	rate      time.Duration
+	lock      sync.Mutex
+	cond      *sync.Cond
+}
+
+func NewLeakyBucket(capacity int, rate time.Duration) *LeakyBucket {
+	lb := &LeakyBucket{
+		capacity:  capacity,
+		remaining: capacity,
+		rate:      rate,
+	}
+	lb.cond = sync.NewCond(&lb.lock)
+	go lb.leak()
+	return lb
+}
+
+func (lb *LeakyBucket) leak() {
+	for {
+		time.Sleep(lb.rate)
+		lb.lock.Lock()
+		if lb.remaining < lb.capacity {
+			lb.remaining++
+			lb.cond.Broadcast()
+		}
+		lb.lock.Unlock()
+	}
+}
+
+func (lb *LeakyBucket) Request(tokens int) bool {
+	lb.lock.Lock()
+	defer lb.lock.Unlock()
+
+	for lb.remaining < tokens {
+		lb.cond.Wait()
+	}
+	lb.remaining -= tokens
+	return true
+}
+
 type TicketService struct {
 	Distrubted_Systems_git.UnimplementedTicketServiceServer
-	events sync.Map
-	lock   sync.Mutex
+	events      sync.Map
+	lock        sync.Mutex
+	rateLimiter *LeakyBucket
+}
+
+func NewTicketService() *TicketService {
+	return &TicketService{
+		rateLimiter: NewLeakyBucket(5, time.Second), // Allow max 5 requests per second
+	}
 }
 
 func (ts *TicketService) BookTickets(ctx context.Context, request *Distrubted_Systems_git.BookRequest) (*Distrubted_Systems_git.BookResponse, error) {
+	if !ts.rateLimiter.Request(1) {
+		return nil, status.Error(codes.ResourceExhausted, "Too many requests, please try again later.")
+	}
 
 	ts.lock.Lock()
-
 	defer ts.lock.Unlock()
 
 	event, ok := ts.events.Load(request.EventId)

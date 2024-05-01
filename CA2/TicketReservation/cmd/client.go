@@ -29,18 +29,19 @@ func main() {
 	//// Call BookTickets
 	bookTickets(client, eventId, 2)
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
+	//
+	//for i := 0; i < 5; i++ {
+	//	wg.Add(1)
+	//	go func(i int) {
+	//		defer wg.Done()
+	//		// Call BookTickets concurrently for different clients
+	//		bookTickets(client, eventId, 4)
+	//	}(i)
+	//}
+	//wg.Wait()
 
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			// Call BookTickets concurrently for different clients
-			bookTickets(client, eventId, 2)
-		}(i)
-	}
-
-	wg.Wait()
+	runFlood(client, eventId, 10)
 }
 
 func createEvent(client ticket.TicketServiceClient) string {
@@ -82,4 +83,29 @@ func bookTickets(client ticket.TicketServiceClient, eventID string, numTickets i
 		log.Fatalf("Could not book tickets: %v", err)
 	}
 	fmt.Printf("Booked Tickets: %v\n", r)
+}
+
+func runFlood(client ticket.TicketServiceClient, eventID string, numRequests int) {
+	var wg sync.WaitGroup
+
+	for i := 0; i < numRequests; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			_, err := client.BookTickets(ctx, &ticket.BookRequest{
+				EventId:    eventID,
+				NumTickets: 2, // Adjust based on your app logic
+			})
+			if err != nil {
+				log.Printf("Request %d failed: %v", i, err)
+			} else {
+				log.Printf("Request %d succeeded", i)
+			}
+		}(i)
+	}
+
+	wg.Wait()
 }
